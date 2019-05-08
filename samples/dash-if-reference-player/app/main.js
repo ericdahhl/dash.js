@@ -118,31 +118,32 @@ app.controller('DashController', function ($scope, sources, contributors, dashif
     $scope.chartEnabled = true;
     $scope.maxPointsToChart = 30;
     $scope.maxChartableItems = 5;
+    $scope.chartPointsCounter = 0; //Used for knowing when to send to server
     $scope.chartCount = 0;
     $scope.chartData = [];
 
     $scope.chartState = {
         audio:{
-            buffer:         {data: [], selected: false, color: '#65080c', label: 'Audio Buffer Level'},
-            bitrate:        {data: [], selected: false, color: '#00CCBE', label: 'Audio Bitrate (kbps)'},
-            index:          {data: [], selected: false, color: '#ffd446', label: 'Audio Current Index'},
-            pendingIndex:   {data: [], selected: false, color: '#FF6700', label: 'AudioPending Index'},
-            ratio:          {data: [], selected: false, color: '#329d61', label: 'Audio Ratio'},
-            download:       {data: [], selected: false, color: '#44c248', label: 'Audio Download Rate (Mbps)'},
-            latency:        {data: [], selected: false, color: '#326e88', label: 'Audio Latency (ms)'},
-            droppedFPS:     {data: [], selected: false, color: '#004E64', label: 'Audio Dropped FPS'},
-            liveLatency:     {data: [], selected: false, color: '#65080c', label: 'Live Latency'}
+            buffer:         {data: [], dataCounter: 0, selected: false, color: '#65080c', label: 'Audio Buffer Level'},
+            bitrate:        {data: [], dataCounter: 0, selected: false, color: '#00CCBE', label: 'Audio Bitrate (kbps)'},
+            index:          {data: [], dataCounter: 0, selected: false, color: '#ffd446', label: 'Audio Current Index'},
+            pendingIndex:   {data: [], dataCounter: 0, selected: false, color: '#FF6700', label: 'AudioPending Index'},
+            ratio:          {data: [], dataCounter: 0, selected: false, color: '#329d61', label: 'Audio Ratio'},
+            download:       {data: [], dataCounter: 0, selected: false, color: '#44c248', label: 'Audio Download Rate (Mbps)'},
+            latency:        {data: [], dataCounter: 0, selected: false, color: '#326e88', label: 'Audio Latency (ms)'},
+            droppedFPS:     {data: [], dataCounter: 0, selected: false, color: '#004E64', label: 'Audio Dropped FPS'},
+            liveLatency:     {data: [], dataCounter: 0, selected: false, color: '#65080c', label: 'Live Latency'}
         },
         video:{
-            buffer:         {data: [], selected: true, color: '#00589d', label: 'Video Buffer Level'},
-            bitrate:        {data: [], selected: true, color: '#ff7900', label: 'Video Bitrate (kbps)'},
-            index:          {data: [], selected: false, color: '#326e88', label: 'Video Current Quality'},
-            pendingIndex:   {data: [], selected: false, color: '#44c248', label: 'Video Pending Index'},
-            ratio:          {data: [], selected: false, color: '#00CCBE', label: 'Video Ratio'},
-            download:       {data: [], selected: false, color: '#FF6700', label: 'Video Download Rate (Mbps)'},
-            latency:        {data: [], selected: false, color: '#329d61', label: 'Video Latency (ms)'},
-            droppedFPS:     {data: [], selected: false, color: '#65080c', label: 'Video Dropped FPS'},
-            liveLatency:     {data: [], selected: false, color: '#65080c', label: 'Live Latency'}
+            buffer:         {data: [], dataCounter: 0, selected: true, color: '#00589d', label: 'Video Buffer Level'},
+            bitrate:        {data: [], dataCounter: 0, selected: true, color: '#ff7900', label: 'Video Bitrate (kbps)'},
+            index:          {data: [], dataCounter: 0, selected: false, color: '#326e88', label: 'Video Current Quality'},
+            pendingIndex:   {data: [], dataCounter: 0, selected: false, color: '#44c248', label: 'Video Pending Index'},
+            ratio:          {data: [], dataCounter: 0, selected: false, color: '#00CCBE', label: 'Video Ratio'},
+            download:       {data: [], dataCounter: 0, selected: false, color: '#FF6700', label: 'Video Download Rate (Mbps)'},
+            latency:        {data: [], dataCounter: 0, selected: false, color: '#329d61', label: 'Video Latency (ms)'},
+            droppedFPS:     {data: [], dataCounter: 0, selected: false, color: '#65080c', label: 'Video Dropped FPS'},
+            liveLatency:     {data: [], dataCounter: 0, selected: false, color: '#65080c', label: 'Live Latency'}
         }
     };
 
@@ -442,9 +443,12 @@ app.controller('DashController', function ($scope, sources, contributors, dashif
         if ($scope.customABRRulesSelected) {
             $scope.player.addABRCustomRule('qualitySwitchRules', 'DownloadRatioRule', DownloadRatioRule); /* jshint ignore:line */
             $scope.player.addABRCustomRule('qualitySwitchRules', 'ThroughputRule', CustomThroughputRule); /* jshint ignore:line */
+            // $scope.player.addABRCustomRule('qualitySwitchRules', 'FestiveRule', FestiveRule);
         } else {
             $scope.player.removeABRCustomRule('DownloadRatioRule');
             $scope.player.removeABRCustomRule('ThroughputRule');
+            // $scope.player.removeABRCustomRule('FestiveRule');
+            
         }
     };
 
@@ -765,11 +769,28 @@ app.controller('DashController', function ($scope, sources, contributors, dashif
         if ($scope.chartEnabled) {
             var specificChart = $scope.chartState[type];
             if (specificChart) {
+               
                 var data = specificChart[name].data;
+                $scope.chartState[type][name].dataCounter++;
                 data.push([time, value]);
+               
                 if (data.length > $scope.maxPointsToChart) {
-                    data.splice(0, 1);
+                   data.splice(0, 1);
                 }
+
+                if (specificChart[name].dataCounter % 30 === 0) {
+                     
+                    fetch('http://localhost:3001/to_csv', {
+                        method: 'POST',
+                        // mode: 'cors',
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ data: data, name: name, type: type })
+    
+                        });               
+                    
+                }      
             }
         }
     };

@@ -105,21 +105,21 @@ av, //last value of throughput
         let duration = streamInfo.manifestInfo.duration; //Duration of video
         let bestR; // To store the bitrate to be requested
         var newQuality = 0; //Newly selected bitrate
-        var buff = dashMetrics.getCurrentBufferLevel(metrics) ? dashMetrics.getCurrentBufferLevel(metrics) : 0.0; //current buffr occupancy
+        var buff = dashMetrics.getCurrentBufferLevel(metrics, true) ? dashMetrics.getCurrentBufferLevel(metrics, true) : 0.0; //current buffr occupancy
         var repSwitch = dashMetrics.getCurrentRepresentationSwitch(metrics);
         var streamIdx = streamInfo.index;
-        var currentIndex = dashMetrics.getCurrentRepresentationSwitch(metrics);
+        var currentIndex = abrController.getTopQualityIndexFor(mediaType, streamIdx);
         let bitrate = mediaInfo.bitrateList.map(b => b.bandwidth);
         let i;
         let lowResRatio = 90 / 240; //lower reservior ratio
-        let upResRatio = 24 / 240; //upper reservoir ratio  
+        let upResRatio = 24 / 240; //upper reservoir ratio
         bitrateCount = bitrate.length;
         mediaPlayerModel = MediaPlayerModel(context).getInstance();
 
-        if (duration >= mediaPlayerModel.getLongFormContentDurationThreshold()) {
-            bufferMax = mediaPlayerModel.getBufferTimeAtTopQualityLongForm();
+        if (duration >= 600) {
+            bufferMax = 60;
         } else {
-            bufferMax = mediaPlayerModel.getBufferTimeAtTopQuality();
+            bufferMax = 30;
         }
 
         //dash.js has variable buffer basd on duration of video. Lower and upper reserve are maintained in same ratio of buffer as given in paper
@@ -142,6 +142,9 @@ av, //last value of throughput
         }
         av = averageThroughputByType(mediaType) / 1000;
         fBuffNow = mapBitrate(buff);
+
+        
+
         if (currentIndex == (bitrateCount - 1))
         {
             plusIndex = bitrateCount - 1;
@@ -187,18 +190,15 @@ av, //last value of throughput
         {
             minIndex = currentIndex;
         }
-
-
-
+        
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
         //abrController.setAverageThroughput(mediaType, lastRequestThroughput);
         if (abrController.getAbandonmentStateFor(mediaType) !== abrController.ABANDON_LOAD) {
             if (bufferStateVO.state === 'bufferLoaded' || isDynamic) {
                 bestR = Math.ceil(bitrate[minIndex] / 1000);
                 newQuality = abrController.getQualityForBitrate(mediaInfo, bestR);
-                //streamProcessor.getScheduleController().setTimeToLoadDelay(0); // TODO Watch out for seek event - no delay when seeking.!!
+                //streamController.setTimeToLoadDelay(0); // TODO Watch out for seek event - no delay when seeking.!!
                 switchRequest = SwitchRequest(context).create(newQuality, SwitchRequest.STRONG);
 
 

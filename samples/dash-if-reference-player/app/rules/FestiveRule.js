@@ -58,11 +58,6 @@ function FestiveRuleClass() {
         return totalScore;
     }
 
-    function getBytesLength(request) {
-        return request.trace.reduce((a, b) => a + b.b[0], 0);
-    }
-
-
     function getMaxIndex(rulesContext) {
 
         
@@ -74,50 +69,49 @@ function FestiveRuleClass() {
         var dashMetrics = DashMetrics(context).getInstance();
         let abrController = rulesContext.getAbrController();
         let bitrate = 0,
-            tmpBitrate = 0,
-            b_target = 0,
-            b_ref = 0,
-            b_cur = abrController.getQualityFor(mediaType, streamController.getActiveStreamInfo()),
-            prevQuality = abrController.getQualityFor(mediaType, streamController.getActiveStreamInfo()),
-            score_cur = 0,
-            score_ref = 0,
-            lastRequest = null,
-            currentRequest = null,
-            requests = dashMetrics.getHttpRequests(mediaType),
-            bitrateArray = rulesContext.getMediaInfo().bitrateList,
-            bufferLevel = dashMetrics.getCurrentBufferLevel(metricsModel.getMetricsFor("video", true)),
-            currentRepresentation = rulesContext.getRepresentationInfo(),
-            bwPrediction = dashManifest.getBandwidth(currentRepresentation),
-            downloadTime,
-            totalTime,
+        tmpBitrate = 0,
+        b_target = 0,
+        b_ref = 0,
+        b_cur = abrController.getQualityFor(mediaType, streamController.getActiveStreamInfo()),
+        prevQuality = abrController.getQualityFor(mediaType, streamController.getActiveStreamInfo()),
+        score_cur = 0,
+        score_ref = 0,
+        lastRequested = null,
+        currentRequest = null,
+        requests = dashMetrics.getHttpRequests(mediaType),
+        bitrateArray = rulesContext.getMediaInfo().bitrateList,
+        currentRepresentation = rulesContext.getRepresentationInfo(),
+        bwPrediction = dashManifest.getBandwidth(currentRepresentation);
 
-        // TODO: implement FESTIVE logic. You have done this bro
+
+
+        // TODO: implement FESTIVE logic
         // 1. log previous quality
 
         // Get last valid request
-        
+        console.log(requests);
+        console.log(mediaType);
         i = requests.length - 1;
-        while (i >= 0 && lastRequest === null) {
+        while (i >= 0 && lastRequested === null) {
             currentRequest = requests[i];
             if (currentRequest._tfinish && currentRequest.trequest && currentRequest.tresponse && currentRequest.trace && currentRequest.trace.length > 0) {
-                lastRequest = requests[i];
+                lastRequested = requests[i];
             }
             i--;
         }
 
-        qualityLog[lastRequest] = prevQuality;
-        lastIndex = lastRequest;
+        qualityLog[lastRequested] = prevQuality;
+        lastIndex = lastRequested;
         // 2. compute b_target
         tmpBitrate = p * bwPrediction;
-        for (var j = 4; j >= 0; j--) { // todo: use bitrateArray.length
-            if (bitrateArray[j] <= tmpBitrate) {
-                b_target = j;
+        for (var i = 4; i >= 0; i--) { // todo: use bitrateArray.length
+            if (bitrateArray[i] <= tmpBitrate) {
+                b_target = i;
                 break;
             }
             b_target = i;
         }
-
-        logger.debug("-----FESTIVE: lastRequested=" + lastRequest + ", bwPrediction=" + bwPrediction + ", b_target=" + b_target + ", switchUpCount=" + switchUpCount);
+        logger.debug("-----FESTIVE: lastRequested=" + lastRequested + ", bwPrediction=" + bwPrediction + ", b_target=" + b_target + ", switchUpCount=" + switchUpCount);
         // 3. compute b_ref
         if (b_target > b_cur) {
             switchUpCount = switchUpCount + 1;
@@ -149,12 +143,11 @@ function FestiveRuleClass() {
         } else {
             bitrate = b_cur;
         }
-
         logger.debug("-----FESTIVE: bitrate=" + bitrate + ", b_ref=" + b_ref + ", b_cur=" + b_cur);
         // 5. return
         
-        if (lastRequest !== null) {
-            console.log(abrController.getThroughputHistory().getSafeAverageThroughput('video', true), (lastRequest._tfinish.getTime() - lastRequest.trequest.getTime()) / 1000);
+        if (lastRequested !== null) {
+            console.log(abrController.getThroughputHistory().getSafeAverageThroughput('video', true), (lastRequested._tfinish.getTime() - lastRequested.trequest.getTime()) / 1000);
         }
         
         // var xhr = new XMLHttpRequest();
